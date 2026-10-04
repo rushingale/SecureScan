@@ -103,6 +103,10 @@ def scan_target(target, scan_profile="top50"):
 
         # -------------------------------------------------
         # Build scan arguments
+        #
+        # -Pn tells Nmap to skip host discovery.
+        # This is important for cloud deployments where
+        # ICMP/host discovery may be blocked.
         # -------------------------------------------------
 
         if scan_profile == "all":
@@ -110,6 +114,8 @@ def scan_target(target, scan_profile="top50"):
             arguments = (
 
                 "-sV "
+
+                "-Pn "
 
                 "-p- "
 
@@ -125,7 +131,9 @@ def scan_target(target, scan_profile="top50"):
 
             arguments = (
 
-                f"-sV "
+                "-sV "
+
+                "-Pn "
 
                 f"--top-ports {port_count} "
 
