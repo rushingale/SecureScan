@@ -1,5 +1,6 @@
 import nmap
 import shutil
+import socket
 
 
 # =========================================================
@@ -10,10 +11,14 @@ def find_nmap():
 
     # -----------------------------------------------------
     # Try to find Nmap automatically from system PATH
-    # Works on Linux, macOS and Windows
     # -----------------------------------------------------
 
     nmap_executable = shutil.which("nmap")
+
+    print(
+        f"[NMAP DEBUG] shutil.which('nmap') = {nmap_executable}",
+        flush=True
+    )
 
     if nmap_executable:
         return nmap_executable
@@ -35,6 +40,11 @@ def find_nmap():
     for path in windows_paths:
 
         if shutil.which(path):
+
+            print(
+                f"[NMAP DEBUG] Found Nmap at: {path}",
+                flush=True
+            )
 
             return path
 
@@ -82,10 +92,66 @@ def scan_target(target, scan_profile="top50"):
     try:
 
         # -------------------------------------------------
+        # Diagnostic information
+        # -------------------------------------------------
+
+        print(
+            "\n[NMAP DEBUG] ===============================",
+            flush=True
+        )
+
+        print(
+            f"[NMAP DEBUG] Target: {target}",
+            flush=True
+        )
+
+        print(
+            f"[NMAP DEBUG] Scan profile: {scan_profile}",
+            flush=True
+        )
+
+
+        # -------------------------------------------------
+        # Test DNS resolution
+        # -------------------------------------------------
+
+        try:
+
+            resolved_addresses = socket.getaddrinfo(
+                target,
+                None
+            )
+
+            resolved_ips = sorted(
+                set(
+                    address[4][0]
+                    for address in resolved_addresses
+                )
+            )
+
+            print(
+                f"[NMAP DEBUG] DNS resolved to: {resolved_ips}",
+                flush=True
+            )
+
+        except Exception as dns_error:
+
+            print(
+                f"[NMAP DEBUG] DNS resolution FAILED: {dns_error}",
+                flush=True
+            )
+
+
+        # -------------------------------------------------
         # Locate Nmap automatically
         # -------------------------------------------------
 
         nmap_path = find_nmap()
+
+        print(
+            f"[NMAP DEBUG] Nmap executable: {nmap_path}",
+            flush=True
+        )
 
 
         # -------------------------------------------------
@@ -101,12 +167,14 @@ def scan_target(target, scan_profile="top50"):
         )
 
 
+        print(
+            "[NMAP DEBUG] python-nmap initialized successfully",
+            flush=True
+        )
+
+
         # -------------------------------------------------
         # Build scan arguments
-        #
-        # -Pn tells Nmap to skip host discovery.
-        # This is important for cloud deployments where
-        # ICMP/host discovery may be blocked.
         # -------------------------------------------------
 
         if scan_profile == "all":
@@ -142,9 +210,20 @@ def scan_target(target, scan_profile="top50"):
             )
 
 
+        print(
+            f"[NMAP DEBUG] Arguments: {arguments}",
+            flush=True
+        )
+
+
         # -------------------------------------------------
         # Execute scan
         # -------------------------------------------------
+
+        print(
+            "[NMAP DEBUG] Starting Nmap scan...",
+            flush=True
+        )
 
         scanner.scan(
 
@@ -155,6 +234,74 @@ def scan_target(target, scan_profile="top50"):
         )
 
 
+        # -------------------------------------------------
+        # Get actual Nmap command
+        # -------------------------------------------------
+
+        try:
+
+            print(
+                f"[NMAP DEBUG] Command: {scanner.command_line()}",
+                flush=True
+            )
+
+        except Exception as command_error:
+
+            print(
+                f"[NMAP DEBUG] Could not read command line: "
+                f"{command_error}",
+                flush=True
+            )
+
+
+        # -------------------------------------------------
+        # Get raw Nmap output if available
+        # -------------------------------------------------
+
+        try:
+
+            last_output = scanner.get_nmap_last_output()
+
+            if last_output:
+
+                print(
+                    "[NMAP DEBUG] Nmap last output:",
+                    flush=True
+                )
+
+                print(
+                    last_output,
+                    flush=True
+                )
+
+        except Exception as output_error:
+
+            print(
+                f"[NMAP DEBUG] Could not read raw Nmap output: "
+                f"{output_error}",
+                flush=True
+            )
+
+
+        # -------------------------------------------------
+        # Discovered hosts
+        # -------------------------------------------------
+
+        discovered_hosts = scanner.all_hosts()
+
+        print(
+            f"[NMAP DEBUG] Discovered hosts: "
+            f"{discovered_hosts}",
+            flush=True
+        )
+
+        print(
+            f"[NMAP DEBUG] Host count: "
+            f"{len(discovered_hosts)}",
+            flush=True
+        )
+
+
         results = []
 
 
@@ -162,7 +309,12 @@ def scan_target(target, scan_profile="top50"):
         # PROCESS DISCOVERED HOSTS
         # =================================================
 
-        for host in scanner.all_hosts():
+        for host in discovered_hosts:
+
+            print(
+                f"[NMAP DEBUG] Processing host: {host}",
+                flush=True
+            )
 
 
             host_data = {
@@ -180,6 +332,13 @@ def scan_target(target, scan_profile="top50"):
                     []
 
             }
+
+
+            print(
+                f"[NMAP DEBUG] Host state: "
+                f"{host_data['state']}",
+                flush=True
+            )
 
 
             # =================================================
@@ -202,6 +361,17 @@ def scan_target(target, scan_profile="top50"):
                     port_info = scanner[
                         host
                     ][protocol][port]
+
+
+                    print(
+                        f"[NMAP DEBUG] Port: "
+                        f"{port} | "
+                        f"State: "
+                        f"{port_info.get('state', '')} | "
+                        f"Service: "
+                        f"{port_info.get('name', '')}",
+                        flush=True
+                    )
 
 
                     ports.append({
@@ -258,6 +428,12 @@ def scan_target(target, scan_profile="top50"):
 
             for script_name, output in host_scripts.items():
 
+                print(
+                    f"[NMAP DEBUG] Host NSE script: "
+                    f"{script_name}",
+                    flush=True
+                )
+
 
                 host_data[
                     "vulnerabilities"
@@ -305,6 +481,13 @@ def scan_target(target, scan_profile="top50"):
 
                     for script_name, output in scripts.items():
 
+                        print(
+                            f"[NMAP DEBUG] Port NSE script: "
+                            f"{script_name} "
+                            f"on port {port}",
+                            flush=True
+                        )
+
 
                         host_data[
                             "vulnerabilities"
@@ -325,6 +508,22 @@ def scan_target(target, scan_profile="top50"):
             results.append(
                 host_data
             )
+
+
+        # =================================================
+        # FINAL DEBUG INFORMATION
+        # =================================================
+
+        print(
+            f"[NMAP DEBUG] Final result count: "
+            f"{len(results)}",
+            flush=True
+        )
+
+        print(
+            "[NMAP DEBUG] ===============================\n",
+            flush=True
+        )
 
 
         # =================================================
@@ -356,6 +555,21 @@ def scan_target(target, scan_profile="top50"):
     # =====================================================
 
     except Exception as e:
+
+        print(
+            "[NMAP ERROR] ===============================",
+            flush=True
+        )
+
+        print(
+            f"[NMAP ERROR] {type(e).__name__}: {e}",
+            flush=True
+        )
+
+        print(
+            "[NMAP ERROR] =================================",
+            flush=True
+        )
 
 
         return {
