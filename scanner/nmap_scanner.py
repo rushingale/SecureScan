@@ -175,15 +175,28 @@ def scan_target(target, scan_profile="top50"):
 
         # -------------------------------------------------
         # Build scan arguments
+        #
+        # -sT:
+        # TCP Connect scan. Does not require raw sockets.
+        #
+        # -Pn:
+        # Skip host discovery.
+        #
+        # --unprivileged:
+        # Tell Nmap to operate without raw packet privileges.
         # -------------------------------------------------
 
         if scan_profile == "all":
 
             arguments = (
 
+                "-sT "
+
                 "-sV "
 
                 "-Pn "
+
+                "--unprivileged "
 
                 "-p- "
 
@@ -199,9 +212,13 @@ def scan_target(target, scan_profile="top50"):
 
             arguments = (
 
+                "-sT "
+
                 "-sV "
 
                 "-Pn "
+
+                "--unprivileged "
 
                 f"--top-ports {port_count} "
 
@@ -241,7 +258,8 @@ def scan_target(target, scan_profile="top50"):
         try:
 
             print(
-                f"[NMAP DEBUG] Command: {scanner.command_line()}",
+                f"[NMAP DEBUG] Command: "
+                f"{scanner.command_line()}",
                 flush=True
             )
 
